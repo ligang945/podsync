@@ -69,6 +69,8 @@ func (s *S3) Delete(ctx context.Context, name string) error {
 }
 
 func (s *S3) Create(ctx context.Context, name string, reader io.Reader) (int64, error) {
+	const acl = "public-read"
+
 	key := s.buildKey(name)
 	logger := log.WithField("key", key)
 
@@ -78,6 +80,7 @@ func (s *S3) Create(ctx context.Context, name string, reader io.Reader) (int64, 
 		Bucket: &s.bucket,
 		Key:    &key,
 		Body:   r,
+		ACL:    aws.String(acl),
 	})
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to upload file")
