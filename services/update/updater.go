@@ -66,17 +66,18 @@ func (u *Manager) Update(ctx context.Context, feedConfig *feed.Config) error {
 	if err := u.updateFeed(ctx, feedConfig); err != nil {
 		return errors.Wrap(err, "update failed")
 	}
-
-	if err := u.downloadEpisodes(ctx, feedConfig); err != nil {
+	downloadedCount, err := u.downloadEpisodes(ctx, feedConfig)
+	if err != nil {
 		return errors.Wrap(err, "download failed")
 	}
 
-	if err := u.cleanup(ctx, feedConfig); err != nil {
-		log.WithError(err).Error("cleanup failed")
-	}
-
-	if err := u.buildXML(ctx, feedConfig); err != nil {
-		return errors.Wrap(err, "xml build failed")
+	if downloadedCount > 0 {
+		if err := u.cleanup(ctx, feedConfig); err != nil {
+			log.WithError(err).Error("cleanup failed")
+		}
+		if err := u.buildXML(ctx, feedConfig); err != nil {
+			return errors.Wrap(err, "xml build failed")
+		}
 	}
 
 	if err := u.buildOPML(ctx); err != nil {
@@ -146,11 +147,13 @@ func (u *Manager) updateFeed(ctx context.Context, feedConfig *feed.Config) error
 	return nil
 }
 
-func (u *Manager) downloadEpisodes(ctx context.Context, feedConfig *feed.Config) error {
+func (u *Manager) downloadEpisodes(ctx context.Context, feedConfig *feed.Config) (int, error) {
 	var (
-		feedID       = feedConfig.ID
-		downloadList []*model.Episode
-		pageSize     = feedConfig.PageSize
+		feedID          = feedConfig.ID
+		downloadList    []*model.Episode
+		pageSize        = feedConfig.PageSize
+		downloadCount   = 0
+		downloadedCount = 0
 	)
 
 	log.WithField("page_size", pageSize).Info("downloading episodes")
@@ -180,19 +183,16 @@ func (u *Manager) downloadEpisodes(ctx context.Context, feedConfig *feed.Config)
 		downloadList = append(downloadList, episode)
 		return nil
 	}); err != nil {
-		return errors.Wrapf(err, "failed to build update list")
+		return downloadedCount, errors.Wrapf(err, "failed to build update list")
 	}
 
-	var (
-		downloadCount = len(downloadList)
-		downloaded    = 0
-	)
+	downloadCount = len(downloadList)
 
 	if downloadCount > 0 {
 		log.Infof("download count: %d", downloadCount)
 	} else {
 		log.Info("no episodes to download")
-		return nil
+		return downloadedCount, nil
 	}
 
 	// Download pending episodes
@@ -215,7 +215,7 @@ func (u *Manager) downloadEpisodes(ctx context.Context, feedConfig *feed.Config)
 				return nil
 			}); err != nil {
 				logger.WithError(err).Error("failed to update file info")
-				return err
+				return downloadedCount, err
 			}
 
 			continue
@@ -223,7 +223,7 @@ func (u *Manager) downloadEpisodes(ctx context.Context, feedConfig *feed.Config)
 			// Will download, do nothing here
 		} else {
 			logger.WithError(err).Error("failed to stat file")
-			return err
+			return downloadedCount, err
 		}
 
 		// Download episode to disk
@@ -245,7 +245,7 @@ func (u *Manager) downloadEpisodes(ctx context.Context, feedConfig *feed.Config)
 				episode.Status = model.EpisodeError
 				return nil
 			}); err != nil {
-				return err
+				return downloadedCount, err
 			}
 
 			continue
@@ -256,7 +256,7 @@ func (u *Manager) downloadEpisodes(ctx context.Context, feedConfig *feed.Config)
 		tempFile.Close()
 		if err != nil {
 			logger.WithError(err).Error("failed to copy file")
-			return err
+			return downloadedCount, err
 		}
 
 		// Update file status in database
@@ -267,14 +267,14 @@ func (u *Manager) downloadEpisodes(ctx context.Context, feedConfig *feed.Config)
 			episode.Status = model.EpisodeDownloaded
 			return nil
 		}); err != nil {
-			return err
+			return downloadedCount, err
 		}
 
-		downloaded++
+		downloadedCount++
 	}
 
-	log.Infof("downloaded %d episode(s)", downloaded)
-	return nil
+	log.Infof("downloaded %d episode(s)", downloadedCount)
+	return downloadedCount, nil
 }
 
 func (u *Manager) buildXML(ctx context.Context, feedConfig *feed.Config) error {
