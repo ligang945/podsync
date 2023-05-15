@@ -182,6 +182,26 @@ func (c *Config) applyDefaults(configPath string) {
 		if feed.PlaylistSort == "" {
 			feed.PlaylistSort = model.SortingAsc
 		}
+
+		if !feed.OPML {
+			feed.OPML = model.OPML
+		}
+
+		if feed.CustomFormat.YouTubeDLFormat == "" {
+			feed.CustomFormat.YouTubeDLFormat = model.DefaultYouTubeDLFormat
+		}
+
+		if feed.CustomFormat.Extension == "" {
+			feed.CustomFormat.Extension = model.DefaultExtension
+		}
+
+		if feed.Filters.MinDuration == 0 {
+			feed.Filters.MinDuration = model.DefaultMinDuration
+		}
+
+		if feed.Clean.KeepLast == 0 {
+			feed.Clean.KeepLast = model.DefaultKeepLast
+		}
 	}
 }
 

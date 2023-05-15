@@ -79,7 +79,7 @@ timeout = 15
 	assert.EqualValues(t, "audio", feed.Format)
 	assert.EqualValues(t, "low", feed.Quality)
 	assert.EqualValues(t, "regex for title here", feed.Filters.Title)
-	assert.EqualValues(t, 0, feed.Filters.MinDuration)
+	assert.EqualValues(t, 300, feed.Filters.MinDuration)
 	assert.EqualValues(t, 86400, feed.Filters.MaxDuration)
 	assert.EqualValues(t, 365, feed.Filters.MaxAge)
 	assert.EqualValues(t, 10, feed.Clean.KeepLast)
@@ -122,6 +122,17 @@ data_dir = "/data"
 
 	require.Len(t, config.Tokens, 1)
 	require.Len(t, config.Tokens["vimeo"], 0)
+
+	feed, _ := config.Feeds["A"]
+	assert.EqualValues(t, 1*time.Hour, feed.UpdatePeriod)
+	assert.EqualValues(t, 5, feed.PageSize)
+	assert.EqualValues(t, 5, feed.Clean.KeepLast)
+	assert.EqualValues(t, model.QualityHigh, feed.Quality)
+	assert.EqualValues(t, model.FormatCustom, feed.Format)
+	assert.EqualValues(t, model.DefaultYouTubeDLFormat, feed.CustomFormat.YouTubeDLFormat)
+	assert.EqualValues(t, model.DefaultExtension, feed.CustomFormat.Extension)
+	assert.EqualValues(t, model.DefaultMinDuration, feed.Filters.MinDuration)
+	assert.False(t, feed.PrivateFeed)
 }
 
 func TestApplyDefaults(t *testing.T) {
@@ -145,10 +156,10 @@ data_dir = "/data"
 	require.True(t, ok)
 
 	assert.EqualValues(t, feed.UpdatePeriod, model.DefaultUpdatePeriod)
-	assert.EqualValues(t, feed.PageSize, 50)
+	assert.EqualValues(t, feed.PageSize, 5)
 	assert.EqualValues(t, feed.Quality, "high")
 	assert.EqualValues(t, feed.Custom.CoverArtQuality, "high")
-	assert.EqualValues(t, feed.Format, "video")
+	assert.EqualValues(t, feed.Format, "custom")
 }
 
 func TestHttpServerListenAddress(t *testing.T) {
