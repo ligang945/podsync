@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pelletier/go-toml"
@@ -127,16 +128,18 @@ func (c *Config) validate() error {
 }
 
 func (c *Config) applyDefaults(configPath string) {
+	if c.Storage.Type == "" {
+		c.Storage.Type = fs.StorageTypeLocal
+	}
+
 	if c.Server.Hostname == "" {
-		if c.Server.Port != 0 && c.Server.Port != 80 {
+		if c.Storage.Type == fs.StorageTypeS3 {
+			c.Server.Hostname = strings.Replace(c.Storage.S3.EndpointURL, "://", "://"+c.Storage.S3.Bucket+".", 1) + "/" + c.Storage.S3.Prefix
+		} else if c.Server.Port != 0 && c.Server.Port != 80 {
 			c.Server.Hostname = fmt.Sprintf("http://localhost:%d", c.Server.Port)
 		} else {
 			c.Server.Hostname = "http://localhost"
 		}
-	}
-
-	if c.Storage.Type == "" {
-		c.Storage.Type = "local"
 	}
 
 	if c.Log.Filename != "" {

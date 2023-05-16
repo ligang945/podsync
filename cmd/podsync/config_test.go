@@ -231,6 +231,31 @@ data_dir = "/data"
 	assert.True(t, config.Database.Badger.FileIO)
 }
 
+func TestLoadS3Config(t *testing.T) {
+	const file = `
+[storage]
+  type = "s3"
+  [storage.s3]
+  endpoint_url = "https://s3.abcd.amazonaws.com"
+  region = "abcd"
+  bucket = "zxcv"
+  prefix = "poiu"
+
+[feeds]
+  [feeds.A]
+  url = "https://youtube.com/watch?v=ygIUF678y40"
+`
+	path := setup(t, file)
+	defer os.Remove(path)
+
+	config, err := LoadConfig(path)
+	assert.NoError(t, err)
+	require.NotNil(t, config)
+	require.NotNil(t, config.Server.Hostname)
+
+	assert.Equal(t, "https://zxcv.s3.abcd.amazonaws.com/poiu", config.Server.Hostname)
+}
+
 func setup(t *testing.T, file string) string {
 	t.Helper()
 
