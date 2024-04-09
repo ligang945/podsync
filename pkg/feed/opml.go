@@ -19,7 +19,7 @@ func BuildOPML(ctx context.Context, feeds map[string]*Config, db feedProvider, h
 
 	for _, feed := range feeds {
 		f, err := db.GetFeed(ctx, feed.ID)
-		if err == model.ErrNotFound {
+		if errors.Is(err, model.ErrNotFound) {
 			// As we update OPML on per-feed basis, some feeds may not yet be populated in database.
 			log.Debugf("can't find configuration for feed %q, ignoring opml", feed.ID)
 			continue
